@@ -1,0 +1,451 @@
+YPE websitelang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAWANI TI TAWID | Binansuan Folk Dance Film</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font for clean, modern look --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Firebase SDK Imports --><script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Log level for Firebase debugging
+        setLogLevel('debug'); 
+        
+        // --- MANDATORY GLOBAL FIREBASE VARIABLES ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        // FIX: Corrected the declaration to reference the global __initial_auth_token
+        // The original error was caused by trying to read 'initialAuthToken' (the variable being declared) 
+        // before its value was set. We must check and use the global variable __initial_auth_token.
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let auth;
+        let db;
+        
+        // Function to initialize Firebase and sign in (kept as per canvas constraints)
+        async function initializeAndAuthenticate() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                console.log("Firebase initialized and user authenticated.");
+            } catch (error) {
+                console.error("Error during Firebase initialization or authentication:", error);
+            }
+        }
+        
+        // Start initialization when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', initializeAndAuthenticate);
+
+        // Modal control functions
+        window.showModal = function(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        window.closeModal = function(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Specific function to show payment modal and clear any previous state
+        window.showPaymentModal = function(id) {
+            document.getElementById('paymentError').classList.add('hidden'); // Clear previous error
+            document.getElementById('paymentForm').reset(); // Clear form
+            document.getElementById(id).classList.remove('hidden');
+            // Reset ticket count display to initial value for new reservation
+            document.getElementById('numberOfTickets').value = '1'; 
+            document.getElementById('expectedTotal').textContent = '500.00'; 
+        }
+
+        // Helper to show/hide loading state on the submit button
+        window.showLoading = function(isLoading) {
+            const button = document.getElementById('submitPaymentBtn');
+            const spinner = document.getElementById('loadingSpinner');
+            if (isLoading) {
+                button.disabled = true;
+                button.classList.add('opacity-50', 'cursor-not-allowed');
+                spinner.classList.remove('hidden');
+                button.querySelector('span').textContent = 'Submitting...';
+            } else {
+                button.disabled = false;
+                button.classList.remove('opacity-50', 'cursor-not-allowed');
+                spinner.classList.add('hidden');
+                button.querySelector('span').textContent = 'Submit Payment Proof';
+            }
+        }
+        
+        // Cost per ticket
+        const TICKET_PRICE = 500.00;
+
+        // Function to handle payment submission (Placeholder for Firestore/API)
+        window.submitPayment = async function() {
+            const name = document.getElementById('payerName').value.trim();
+            const reference = document.getElementById('referenceNumber').value.trim();
+            const numTickets = parseInt(document.getElementById('numberOfTickets').value, 10);
+            // const amountPaid is removed here
+            const errorElement = document.getElementById('paymentError');
+
+            // Client-side validation: Check name, reference, and tickets
+            if (!name || !reference || isNaN(numTickets) || numTickets < 1) {
+                errorElement.textContent = "Please ensure all fields are correctly filled, including a valid number of tickets.";
+                errorElement.classList.remove('hidden');
+                return;
+            }
+
+            const expectedAmount = numTickets * TICKET_PRICE;
+            errorElement.classList.add('hidden'); // Clear error if validation passes
+
+            // Start loading state
+            window.showLoading(true);
+            
+            // Simulate network delay for API submission (2 seconds)
+            await new Promise(resolve => setTimeout(resolve, 2000)); 
+
+            try {
+                // Placeholder success logic (in a real app, Firestore would be here)
+                
+                const statusMessage = `Thank you, ${name}! Your reservation for ${numTickets} ticket(s) (Expected: PHP ${expectedAmount.toFixed(2)}) with payment reference ${reference} has been received and is being verified. We will contact you shortly to confirm your seats.`;
+                const statusTitle = "Submission Successful!";
+                document.getElementById('statusTitle').textContent = statusTitle;
+                document.getElementById('statusMessage').textContent = statusMessage;
+                document.getElementById('statusIcon').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-12 h-12 text-green-500 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>`;
+                window.closeModal('paymentModal');
+                window.showModal('statusModal');
+
+            } catch (error) {
+                console.error("Payment Submission Error:", error);
+                const statusMessage = `An error occurred during submission. Please contact the organizers directly.`;
+                const statusTitle = "Submission Failed";
+                document.getElementById('statusTitle').textContent = statusTitle;
+                document.getElementById('statusMessage').textContent = statusMessage;
+                document.getElementById('statusIcon').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-12 h-12 text-red-500 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.021 3.375 1.768 3.375h14.5c1.746 0 2.634-1.875 1.768-3.375l-7.25-12.25a1.5 1.5 0 0 0-2.634 0l-7.25 12.25Z" /></svg>`;
+                window.closeModal('paymentModal');
+                window.showModal('statusModal');
+            } finally {
+                window.showLoading(false);
+            }
+        }
+
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d0d0d;
+        }
+        /* Custom CSS to handle the dynamic background image from the poster */
+        .hero-background {
+            background-size: cover;
+            /* Adjusting position slightly to focus on the main elements */
+            background-position: center 30%; 
+            background-attachment: fixed; /* Fixed background gives a nice scrolling parallax effect */
+            position: relative;
+        }
+        /* Gradient overlay for better text contrast, matching the dark aesthetic */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0.6) 0%,
+                rgba(0, 0, 0, 0.8) 50%,
+                #0d0d0d 100%
+            );
+        }
+        /* New image styling to cover the entire container */
+        .bg-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 30%;
+            z-index: 1; /* Place behind the overlay */
+            pointer-events: none; /* Ignore pointer events */
+        }
+        .main-content {
+            z-index: 10;
+            position: relative;
+        }
+        .performer-card {
+            background-color: #1a1a1a;
+            transition: transform 0.3s ease;
+        }
+        .performer-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(255, 0, 0, 0.2);
+        }
+        /* --- Custom class for extra wide letter spacing --- */
+        .tracking-ultimate {
+            letter-spacing: 0.4em;
+        }
+        /* -------------------------------------------------------- */
+    </style>
+</head>
+<body class="text-white antialiased">
+
+    <!-- Hero Background with Fixed Image (Using the Final Poster) --><div class="hero-background min-h-screen flex items-center justify-center p-4">
+        <!-- Background Image Element (Removed) --><div class="overlay" style="z-index: 2;"></div> <!-- Ensure overlay is above the content --><div class="main-content w-full max-w-6xl text-center pt-10 pb-10">
+            
+            <!-- PRODUCTION HEADER --><p class="text-xs sm:text-sm tracking-[0.3em] uppercase text-gray-300 mb-2">A FILM BY <span class="font-bold text-white">ARTIX PRODUCTION</span></p>
+
+            <!-- CHOREOGRAPHY CREDIT (Already present) --><p class="text-xs sm:text-sm tracking-[0.3em] uppercase text-red-400 mb-6">Choreograph by <span class="font-bold text-white">ALTHEA JACOB</span></p>
+
+            <!-- MAIN TITLE --><h1 class="text-5xl sm:text-7xl md:text-8xl font-black uppercase leading-tight tracking-wider mb-4">
+                DAWANI TI TAWID
+            </h1>
+
+            <!-- SUBTITLE / TRANSLATION --><p class="text-base sm:text-xl font-medium tracking-widest text-yellow-300 italic mb-6">
+                "THE UTILIZATION OF DRINKING GLASSES"
+            </p>
+
+            <!-- EVENT DETAILS CARD --><div class="bg-black/50 backdrop-blur-sm p-6 sm:p-8 rounded-xl max-w-xl mx-auto border border-gray-700/50 shadow-2xl">
+                <!-- MODIFIED: Replaced tracking-wider with the new tracking-ultimate class --><p class="text-lg sm:text-xl font-semibold uppercase text-red-400 mb-4 tracking-ultimate">
+                    BINASUAN FOLK DANCE
+                </p>
+
+                <div class="space-y-3">
+                    <!-- DATE & TIME - FONT SIZE MAINTAINED (text-xl sm:text-2xl) AND COLOR CHANGED TO WHITE --><div class="flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-400 mr-3 flex-shrink-0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5m18 7.5v-7.5" />
+                        </svg>
+                        <div class="text-center">
+                            <!-- COLOR CHANGED TO text-white --><span class="font-black text-xl sm:text-2xl text-white block leading-tight">
+                                28 NOVEMBER 2025 | 9:00 AM
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- LOCATION - FONT SIZE REDUCED TO text-lg sm:text-xl --><div class="flex items-center justify-center text-left">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-400 mr-3 flex-shrink-0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                        </svg>
+                        <!-- SIZE REDUCED to text-lg sm:text-xl --><span class="font-black text-lg sm:text-xl text-white">MUNICIPALITY OF BAYAMBANG PANGASINAN</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Call to Action link - NOW OPENS PAYMENT MODAL --><button onclick="showPaymentModal('paymentModal')" 
+               class="inline-block mt-12 px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                Reserve Your Seat Here
+            </button>
+
+
+            <!-- Performer Gallery --><div class="mt-12 pt-8">
+                <h2 class="text-3xl font-extrabold uppercase tracking-widest mb-8 text-white border-b border-red-700/50 pb-2">
+                    Meet the Performers
+                </h2>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                    
+                    <!-- Performer Data Array --><script>
+                        // Helper function to get the correct URL for uploaded files
+                        function getFileUrl(fileId) {
+                            if (fileId && fileId.startsWith('uploaded:')) {
+                                // This constructs the path needed to access uploaded assets in the Canvas environment
+                                return `https://upload.googleusercontent.com/` + fileId;
+                            }
+                            return fileId;
+                        }
+
+                        const PERFORMER_PLACEHOLDER = 'https://placehold.co/112x112/ff0000/ffffff?text=Performer';
+                        
+                        // UPDATED: Using the file reference IDs for each performer image
+                        const performers = [
+                            { name: 'Althea Jacob', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/Althea%20Jacob.jpg' },
+                            { name: 'Alexis Mones', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/Alexis%20Mones.jpg' },
+                            { name: 'Rey Dela Cruz', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/Rey%20Dela%20Cruz.jpg' }, // No specific image for Rey Dela Cruz was provided, keeping placeholder
+                            { name: 'Grace Garson', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/Grace%20Garson.jpg' },
+                            { name: 'Kiel Ezra Capuchino', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/Kiel%20Capuchino.jpg' }, 
+                            { name: 'Paul Alcahupas', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/Paul%20Alcahupas.jpg' },
+                            { name: 'Daniel Guerta', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/Daniel%20Guerta.jpg' },
+                            { name: 'John Lorenz Basila', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/John%20Lorenz%20Basila.jpg' },
+                            { name: 'James Laserna', file: 'https://github.com/delacruzreey-tech/Artix-Production/blob/main/James%20Laserna.jpg' }, 
+                        ];
+
+                        const galleryContainer = document.querySelector('.grid-cols-2');
+                        
+                        // Function to render performer card
+                        function createPerformerCard(performer) {
+                            const card = document.createElement('div');
+                            card.className = 'flex flex-col items-center performer-card p-4 rounded-xl shadow-lg';
+
+                            // Image container with rounded border
+                            const img = document.createElement('img');
+                            // USE getFileUrl() HERE TO FIX IMAGE LOADING
+                            img.src = getFileUrl(performer.file); 
+                            img.alt = performer.name;
+                            img.className = 'w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-full mb-3 border-4 border-red-500 shadow-xl';
+                            // Keeping the onerror handler as a backup
+                            img.onerror = function() {
+                                this.onerror=null; 
+                                this.src='https://placehold.co/112x112/570000/ffffff?text=Failed';
+                            };
+
+
+                            // Name
+                            const name = document.createElement('p');
+                            name.className = 'text-sm sm:text-base font-semibold text-white truncate w-full';
+                            name.textContent = performer.name;
+                            
+                            // Role
+                            const role = document.createElement('p');
+                            role.className = 'text-xs text-gray-400';
+                            
+                            let performerRole = 'Performer';
+                            if (performer.name.includes("Laserna")) {
+                                performerRole = 'Visuals / Performer';
+                            } else if (performer.name.includes("Althea Jacob")) {
+                                performerRole = 'Choreograph / Performer'; 
+                            }
+                            
+                            role.textContent = performerRole;
+
+
+                            card.appendChild(img);
+                            card.appendChild(name);
+                            card.appendChild(role);
+                            
+                            galleryContainer.appendChild(card);
+                        }
+
+                        // Render all performers
+                        galleryContainer.innerHTML = ''; // Clear existing content before rendering
+                        performers.forEach(createPerformerCard);
+                    </script>
+
+                </div>
+            </div>
+            
+            <!-- PRODUCTION FOOTER --><div class="mt-12 pt-8 border-t border-gray-800">
+                 <p class="text-xs sm:text-sm font-light leading-relaxed text-gray-400">
+                    Presented by: <span class="font-bold text-white">2BSBA - MM1</span>, with Visuals by <span class="font-bold text-white">Artix Production</span>
+                </p>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Payment Submission Modal --><div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-900 w-full max-w-lg p-6 sm:p-8 rounded-xl shadow-2xl border border-red-700/50 relative text-left max-h-screen overflow-y-auto">
+            
+            <!-- Close Button --><button onclick="closeModal('paymentModal')" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <!-- Modal Title --><h2 class="text-2xl font-bold text-red-400 mb-6 border-b border-gray-700 pb-2 text-center">Confirm Your Reservation</h2>
+            
+            <!-- Step 1: Payment Instructions --><div class="mb-6 p-4 bg-gray-800 rounded-lg">
+                <h3 class="text-lg font-semibold text-white mb-3 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2 text-yellow-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3M3 18.75h18A2.25 2.25 0 0 0 23.25 16.5v-9A2.25 2.25 0 0 0 21 5.25H3A2.25 2.25 0 0 0 .75 7.5v9A2.25 2.25 0 0 0 3 18.75Z" />
+                    </svg>
+                    <span class="whitespace-nowrap">Step 1: Send Payment (<span class="font-bold">PHP 500.00/Ticket</span>)</span>
+                </h3>
+                <p class="text-sm text-gray-300 mb-3">
+                    Please send the ticket price to the GCash details below. Calculate your total based on the number of tickets you need.
+                </p>
+                
+                <!-- GCash Card/Image --><div class="bg-red-900/50 p-4 rounded-lg text-center border border-red-700">
+                    <!-- ID verified from previous step --><img src="uploaded:image_0037ff.png-1f5c1e5c-5f22-4d93-8e6a-987c0ce59134" alt="GCash Payment QR Code" class="w-48 h-48 mx-auto rounded-lg mb-3 shadow-xl object-contain"
+                         onerror="this.onerror=null;this.src='https://placehold.co/192x192/470000/ffffff?text=GCASH+QR+Error';">
+                    <p class="text-white font-bold text-lg">GCash Account Name: Artix Production</p>
+                    <p class="text-yellow-300 font-semibold text-lg">Account Number: 0999 123 4567</p>
+                </div>
+            </div>
+
+            <!-- Step 2: Submission Form --><div class="mb-6 p-4 bg-gray-800 rounded-lg">
+                <h3 class="text-lg font-semibold text-white mb-3 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2 text-green-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.836A4.5 4.5 0 0 1 12 4.5c0 1.637-.624 3.125-1.644 4.25h-.158c-1.02-.924-1.644-2.313-1.644-3.75 0-1.637.624-3.125 1.644-4.25h.158Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15M9 18.75h6" />
+                    </svg>
+                    Step 2: Submit Proof
+                </h3>
+
+                <!-- Error Message Container --><div id="paymentError" class="hidden bg-red-800/50 text-red-200 p-3 rounded-lg text-sm mb-4"></div>
+                
+                <form onsubmit="event.preventDefault(); submitPayment();" id="paymentForm" class="space-y-4">
+                    <div>
+                        <label for="payerName" class="block text-sm font-medium text-gray-400 mb-1">Your Full Name (For Ticket)</label>
+                        <input type="text" id="payerName" placeholder="Juan Dela Cruz" required
+                               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-red-500 focus:border-red-500">
+                    </div>
+                    
+                    <!-- Number of Tickets Field --><div>
+                        <label for="numberOfTickets" class="block text-sm font-medium text-gray-400 mb-1">Number of Tickets</label>
+                        <input type="number" id="numberOfTickets" placeholder="1" required min="1" value="1"
+                               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-red-500 focus:border-red-500">
+                        <p class="text-xs text-gray-500 mt-1">Expected total: PHP <span id="expectedTotal">500.00</span></p>
+                    </div>
+
+                    <!-- REMOVED: Amount Paid (PHP) Field --><div>
+                        <label for="referenceNumber" class="block text-sm font-medium text-gray-400 mb-1">GCash Reference Number</label>
+                        <input type="text" id="referenceNumber" placeholder="e.g., 512345678901" required
+                               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-red-500 focus:border-red-500">
+                    </div>
+
+                    <button type="submit" id="submitPaymentBtn"
+                            class="w-full py-3 mt-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded-lg transition duration-200 flex items-center justify-center">
+                        <svg id="loadingSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Submit Payment Proof</span>
+                    </button>
+                </form>
+            </div>
+            
+            <script>
+                // Live update expected total based on number of tickets
+                document.getElementById('numberOfTickets').addEventListener('input', function() {
+                    const num = parseInt(this.value, 10);
+                    const expectedTotalElement = document.getElementById('expectedTotal');
+                    const TICKET_PRICE = 500.00; // Updated locally for the script scope
+                    
+                    if (num >= 1) {
+                        expectedTotalElement.textContent = (num * TICKET_PRICE).toFixed(2);
+                    } else {
+                        expectedTotalElement.textContent = '0.00';
+                    }
+                });
+            </script>
+
+        </div>
+    </div>
+
+    <!-- Status/Confirmation Modal --><div id="statusModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-900 w-full max-w-sm p-8 rounded-xl shadow-2xl border border-red-700/50 relative text-center">
+            
+            <div id="statusIcon" class="mb-4">
+                <!-- Icon will be inserted by JS --></div>
+
+            <h2 id="statusTitle" class="text-2xl font-bold text-white mb-2"></h2>
+            
+            <p id="statusMessage" class="text-sm text-gray-300 mb-6 leading-relaxed"></p>
+
+            <button onclick="closeModal('statusModal')"
+                    class="mt-4 w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded-lg transition duration-200">
+                Close
+            </button>
+        </div>
+    </div>
+    
+</body>
+</html>
